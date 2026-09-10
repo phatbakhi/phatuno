@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>UNO Online Tuyết Rơi - 2 Người Chơi</title>
+    <!-- Font & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- PeerJS Thư viện kết nối 2 người chơi miễn phí -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Nunito', sans-serif; -webkit-tap-highlight-color: transparent; }
+        body {
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            color: #fff;
+            position: relative;
+        }
+
+        #snowflakeCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
+
+        /* SẢNH CHỜ (LOBBY) */
+        .lobby-card {
+            position: relative; z-index: 2; width: 90%; max-width: 400px;
+            background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 24px; padding: 30px 20px;
+            text-align: center; box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+        }
+        .lobby-card h1 { font-size: 28px; margin-bottom: 10px; color: #a8edf0; text-shadow: 0 0 10px rgba(168, 237, 240, 0.5); }
+        .input-box { width: 100%; padding: 12px; margin: 8px 0; border-radius: 50px; border: 2px solid rgba(255,255,255,0.4); background: rgba(255,255,255,0.2); color: #fff; text-align: center; font-size: 16px; outline: none; }
+        .input-box::placeholder { color: rgba(255, 255, 255, 0.7); }
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 50px; background: linear-gradient(135deg, #a8edf0, #a1c4fd); color: #1e3c72; font-weight: 800; font-size: 16px; cursor: pointer; margin-top: 8px; box-shadow: 0 4px 15px rgba(168,237,240,0.4); }
+        .btn:active { transform: scale(0.96); }
+
+        /* BÀN CHƠI GAME */
+        .game-board {
+            display: none; position: relative; z-index: 2; width: 100vw; height: 100vh;
+            flex-direction: column; justify-content: space-between; align-items: center; padding: 15px 10px;
+        }
+        .status-bar { background: rgba(0,0,0,0.4); backdrop-filter: blur(8px); padding: 8px 20px; border-radius: 30px; font-weight: 700; color: #a8edf0; border: 1px solid rgba(255,255,255,0.2); }
+
+        /* VÙNG BÀI */
+        .hand { display: flex; gap: -20px; overflow-x: auto; width: 100%; max-width: 600px; padding: 10px; min-height: 110px; justify-content: center; align-items: center; }
+        .opponent-hand .card-uno { background: #2c3e50 !important; border: 2px solid #fff; width: 50px; height: 75px; margin: 0 -10px; border-radius: 8px; }
+
+        /* LÁ BÀI UNO */
+        .card-uno {
+            width: 65px; height: 100px; border-radius: 10px; display: flex; flex-direction: column; justify-content: center; align-items: center;
+            font-size: 22px; font-weight: 900; color: white; cursor: pointer; border: 2px solid #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            transition: all 0.2s; user-select: none; position: relative; flex-shrink: 0; margin: 0 3px;
+        }
+        .card-uno:hover { transform: translateY(-10px); }
+        .card-red { background: #ff4757; }
+        .card-blue { background: #1e90ff; }
+        .card-green { background: #2ed573; }
+        .card-yellow { background: #ffa502; color: #333; }
+        .card-black { background: #2f3542; }
+
+        /* KHU VỰC RÚT BÀI VÀ ĐÁNH BÀI (GIỮA MÀN HÌNH) */
+        .center-area { display: flex; gap: 30px; align-items: center; }
+        .deck-pile { background: linear-gradient(135deg, #2c3e50, #000); border: 2px dashed #a8edf0; }
+
+        /* BUTTON UNO */
+        .uno-btn { position: absolute; right: 15px; bottom: 120px; width: 60px; height: 60px; border-radius: 50%; background: #ff4757; color: white; font-weight: 900; border: 3px solid #fff; box-shadow: 0 0 15px #ff4757; cursor: pointer; display: flex; justify-content: center; align-items: center; }
+
+        /* MODAL KHU VỰC ĐỔI MÀU */
+        .color-picker { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 99; justify-content: center; align-items: center; }
+        .color-box { background: rgba(32,58,67,0.9); padding: 20px; border-radius: 20px; text-align: center; }
+        .color-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+        .c-btn { width: 70px; height: 70px; border-radius: 15px; border: 2px solid #fff; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <canvas id="snowflakeCanvas"></canvas>
+
+    <!-- SẢNH KHỞI TẠO GAME -->
+    <div class="lobby-card" id="lobby">
+        <h1><i class="fa-solid fa-snowflake"></i> UNO SNOW</h1>
+        <p style="font-size:14px; margin-bottom:12px; opacity:0.8;">Chơi UNO Online Tuyết Rơi 2 Người</p>
+        
+        <!-- NHẬP TÊN NGUỜI CHƠI -->
+        <input type="text" id="player-name" class="input-box" placeholder="Nhập tên của bạn (Ví dụ: Phát)" value="">
+
+        <hr style="border: 0.5px solid rgba(255,255,255,0.2); margin: 12px 0;">
+
+        <div style="margin-bottom: 12px;">
+            <p style="font-size:14px;">Mã phòng của bạn:</p>
+            <h2 id="my-id" style="color:#a8edf0; letter-spacing:2px; margin: 3px 0; font-size:20px;">Đang tạo mã...</h2>
+        </div>
+
+        <p style="font-size:14px;">Hoặc Nhập Mã Phòng Bạn Bè:</p>
+        <input type="text" id="join-id" class="input-box" placeholder="Dán mã phòng vào đây...">
+        <button class="btn" onclick="joinRoom()"><i class="fa-solid fa-plug"></i> Vào Phòng</button>
+    </div>
+
+    <!-- BÀN CHƠI GAME -->
+    <div class="game-board" id="gameBoard">
+        <div class="status-bar" id="turnStatus">Đang chờ đối thủ...</div>
+
+        <!-- BÀI ĐỐI THỦ -->
+        <div>
+            <div style="text-align:center; font-size:14px; font-weight:800; color:#a8edf0; margin-bottom:5px;" id="oppNameDisplay">Đối thủ (7 lá)</div>
+            <div class="hand opponent-hand" id="oppHand"></div>
+        </div>
+
+        <!-- KHU VỰC GIỮA (RÚT BÀI & BÀI ĐÃ ĐÁNH) -->
+        <div class="center-area">
+            <div>
+                <div style="font-size:11px; text-align:center;">Chồng bài rút</div>
+                <div class="card-uno deck-pile" onclick="drawCardAction()"><i class="fa-solid fa-box-archive"></i></div>
+            </div>
+            <div>
+                <div style="font-size:11px; text-align:center;">Lá hiện tại</div>
+                <div class="card-uno" id="topCard">?</div>
+            </div>
+        </div>
+
+        <!-- BÀI BẠN -->
+        <div style="width:100%;">
+            <div style="text-align:center; font-size:14px; font-weight:800; color:#fff; margin-bottom:5px;" id="myNameDisplay">Bạn (<span id="myCardCount">0</span> lá)</div>
+            <div class="hand" id="myHand"></div>
+        </div>
+
+        <button class="uno-btn" onclick="sayUno()">UNO!</button>
+    </div>
+
+    <!-- MODAL CHỌN MÀU (KHI ĐÁNH LÁ WILD/+4) -->
+    <div class="color-picker" id="colorPicker">
+        <div class="color-box">
+            <h3>Chọn màu tiếp theo</h3>
+            <div class="color-btns">
+                <div class="c-btn card-red" onclick="selectColor('red')"></div>
+                <div class="c-btn card-blue" onclick="selectColor('blue')"></div>
+                <div class="c-btn card-green" onclick="selectColor('green')"></div>
+                <div class="c-btn card-yellow" onclick="selectColor('yellow')"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. HIỆU ỨNG TUYẾT RƠI ---
+        const canvas = document.getElementById('snowflakeCanvas');
+        const ctx = canvas.getContext('2d');
+        let w = canvas.width = window.innerWidth, h = canvas.height = window.innerHeight;
+        const flakes = Array.from({length: 60}, () => ({ x: Math.random()*w, y: Math.random()*h, r: Math.random()*3+1, d: Math.random()*60 }));
+        function drawSnow() {
+            ctx.clearRect(0, 0, w, h); ctx.fillStyle = "rgba(255,255,255,0.8)"; ctx.beginPath();
+            flakes.forEach(f => { ctx.moveTo(f.x, f.y); ctx.arc(f.x, f.y, f.r, 0, Math.PI*2); });
+            ctx.fill();
+            flakes.forEach(f => { f.y += Math.cos(f.d) + 1 + f.r/2; if(f.y > h) f.y = 0; });
+            requestAnimationFrame(drawSnow);
+        }
+        drawSnow();
+
+        // --- 2. PEERJS KẾT NỐI ONLINE ---
+        let peer = new Peer(), conn = null, isHost = false, myTurn = false;
+        let deck = [], myHand = [], oppHandCount = 7, topCard = null, pendingCardIdx = null;
+        let myName = "Người chơi", oppName = "Đối thủ";
+
+        peer.on('open', id => { document.getElementById('my-id').innerText = id; });
+
+        // Lấy tên của bản thân từ ô input
+        function getMyName() {
+            const input = document.getElementById('player-name').value.trim();
+            return input !== "" ? input : "Người chơi";
+        }
+
+        // Người tạo phòng (Host) chờ người khác kết nối
+        peer.on('connection', c => {
+            conn = c; isHost = true; myTurn = true;
+            myName = getMyName();
+            initLobbyToGame();
+            setupGame();
+            listenData();
+        });
+
+        // Người vào phòng (Client)
+        function joinRoom() {
+            const destId = document.getElementById('join-id').value.trim();
+            if(!destId) return alert("Vui lòng nhập Mã phòng!");
+            
+            myName = getMyName();
+            conn = peer.connect(destId);
+            isHost = false; myTurn = false;
+            conn.on('open', () => {
+                initLobbyToGame();
+                listenData();
+                // Gửi tên của mình sang cho Host
+                conn.send({ type: 'SEND_NAME', name: myName });
+            });
+        }
+
+        function initLobbyToGame() {
+            document.getElementById('lobby').style.display = 'none';
+            document.getElementById('gameBoard').style.display = 'flex';
+            document.getElementById('myNameDisplay').innerText = `${myName} (0 lá)`;
+        }
+
+        // --- 3. LOGIC UNO ---
+        const colors = ['red', 'blue', 'green', 'yellow'];
+        const values = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '🚫', '🔄', '+2'];
+
+        function createDeck() {
+            let d = [];
+            colors.forEach(c => {
+                values.forEach(v => { d.push({color: c, val: v}); d.push({color: c, val: v}); });
+            });
+            for(let i=0; i<4; i++) {
+                d.push({color: 'black', val: '🌈'});
+                d.push({color: 'black', val: '+4'});
+            }
+            return d.sort(() => Math.random() - 0.5);
+        }
+
+        function setupGame() {
+            deck = createDeck();
+            myHand = deck.splice(0, 7);
+            let oppHand = deck.splice(0, 7);
+            topCard = deck.pop();
+            while(topCard.color === 'black') { deck.push(topCard); topCard = deck.pop(); }
+
+            renderAll();
+            sendGameState(oppHand);
+        }
+
+        function sendGameState(oppHandData = null) {
+            conn.send({
+                type: 'SYNC',
+                topCard: topCard,
+                oppCardCount: myHand.length,
+                yourTurn: !myTurn,
+                yourHand: oppHandData,
+                deckLength: deck.length,
+                hostName: myName
+            });
+        }
+
+        function listenData() {
+            conn.on('data', data => {
+                if(data.type === 'SEND_NAME') {
+                    oppName = data.name;
+                    renderAll();
+                } else if(data.type === 'SYNC') {
+                    topCard = data.topCard;
+                    oppHandCount = data.oppCardCount;
+                    myTurn = data.yourTurn;
+                    if(data.hostName) oppName = data.hostName;
+                    if(data.yourHand) myHand = data.yourHand;
+                    renderAll();
+                } else if(data.type === 'DRAW') {
+                    if(isHost) {
+                        let drawn = deck.pop();
+                        conn.send({ type: 'GIVE_CARD', card: drawn });
+                        oppHandCount++;
+                        myTurn = true;
+                        sendGameState();
+                    }
+                } else if(data.type === 'GIVE_CARD') {
+                    myHand.push(data.card);
+                    myTurn = false;
+                    renderAll();
+                } else if(data.type === 'SAY_UNO') {
+                    alert(`${oppName} đã hét UNO!`);
+                }
+            });
+        }
+
+        function renderAll() {
+            // Render Tên hiển thị
+            document.getElementById('myNameDisplay').innerText = `${myName} (${myHand.length} lá)`;
+            document.getElementById('oppNameDisplay').innerText = `${oppName} (${oppHandCount} lá)`;
+
+            // Render Bài của mình
+            const myHandEl = document.getElementById('myHand');
+            myHandEl.innerHTML = '';
+            myHand.forEach((card, idx) => {
+                let el = document.createElement('div');
+                el.className = `card-uno card-${card.color}`;
+                el.innerText = card.val;
+                el.onclick = () => playCard(idx);
+                myHandEl.appendChild(el);
+            });
+
+            // Render Bài đối thủ (Mặt sau)
+            const oppHandEl = document.getElementById('oppHand');
+            oppHandEl.innerHTML = '';
+            for(let i=0; i<oppHandCount; i++) {
+                let el = document.createElement('div');
+                el.className = 'card-uno';
+                oppHandEl.appendChild(el);
+            }
+
+            // Render Lá bài hiện tại
+            const topEl = document.getElementById('topCard');
+            topEl.className = `card-uno card-${topCard.color}`;
+            topEl.innerText = topCard.val;
+
+            // Lượt chơi
+            document.getElementById('turnStatus').innerText = myTurn ? "🟢 ĐẾN LƯỢT BẠN!" : `⏳ Lượt của ${oppName}...`;
+        }
+
+        function playCard(idx) {
+            if(!myTurn) return alert("Chưa tới lượt của bạn!");
+            let card = myHand[idx];
+
+            if(card.color === 'black' || card.color === topCard.color || card.val === topCard.val) {
+                if(card.color === 'black') {
+                    pendingCardIdx = idx;
+                    document.getElementById('colorPicker').style.display = 'flex';
+                    return;
+                }
+                executePlay(idx, card.color);
+            } else {
+                alert("Lá bài không hợp lệ!");
+            }
+        }
+
+        function selectColor(color) {
+            document.getElementById('colorPicker').style.display = 'none';
+            myHand[pendingCardIdx].color = color;
+            executePlay(pendingCardIdx, color);
+        }
+
+        function executePlay(idx, color) {
+            let card = myHand.splice(idx, 1)[0];
+            topCard = card;
+
+            if(card.val === '🚫' || card.val === '🔄') {
+                myTurn = true; // Mất lượt đối thủ
+            } else {
+                myTurn = false;
+            }
+
+            if(myHand.length === 0) {
+                alert("🎉 CHÚC MỪNG! BẠN ĐÃ CHIẾN THẮNG!");
+            }
+
+            if(isHost) {
+                sendGameState();
+                renderAll();
+            } else {
+                conn.send({ type: 'SYNC', topCard: topCard, oppCardCount: myHand.length, yourTurn: true });
+                renderAll();
+            }
+        }
+
+        function drawCardAction() {
+            if(!myTurn) return alert("Chưa tới lượt bạn!");
+            if(isHost) {
+                myHand.push(deck.pop());
+                myTurn = false;
+                sendGameState();
+                renderAll();
+            } else {
+                conn.send({ type: 'DRAW' });
+            }
+        }
+
+        function sayUno() {
+            if(myHand.length === 1) {
+                alert("Bạn đã hét UNO!");
+                conn.send({ type: 'SAY_UNO' });
+            } else {
+                alert("Bạn chỉ được bấm UNO khi còn 1 lá bài!");
+            }
+        }
+    </script>
+</body>
+</html>

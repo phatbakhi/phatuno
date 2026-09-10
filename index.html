@@ -25,6 +25,42 @@
 
         #snowflakeCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
 
+        /* MODAL THÔNG BÁO NỔI KHI VÀO WEB */
+        .notice-modal {
+            display: flex; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(8px); z-index: 9999;
+            justify-content: center; align-items: center; padding: 15px; animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .notice-card {
+            background: rgba(30, 41, 59, 0.95); border: 2px solid rgba(168, 237, 240, 0.5);
+            border-radius: 24px; padding: 20px; max-width: 400px; width: 100%; text-align: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6); max-height: 90vh; overflow-y: auto;
+        }
+        .notice-card h2 { color: #a8edf0; font-size: 20px; font-weight: 900; margin-bottom: 8px; }
+        .notice-sub { font-size: 13px; color: #cbd5e1; line-height: 1.4; margin-bottom: 12px; }
+        .notice-sub b { color: #2ed573; }
+        .notice-sub a { color: #a8edf0; word-break: break-all; }
+        
+        .qr-container { background: #fff; border-radius: 16px; padding: 10px; margin: 10px 0; display: inline-block; }
+        .qr-img { width: 100%; max-width: 200px; height: auto; border-radius: 8px; display: block; margin: 0 auto; }
+        
+        .btn-download-qr {
+            background: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255,255,255,0.4);
+            color: #fff; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700;
+            cursor: pointer; margin-top: 6px; display: inline-flex; align-items: center; gap: 6px;
+            transition: all 0.2s;
+        }
+        .btn-download-qr:hover { background: rgba(255, 255, 255, 0.3); }
+
+        .btn-close-notice {
+            width: 100%; padding: 12px; border: none; border-radius: 50px;
+            background: linear-gradient(135deg, #a8edf0, #a1c4fd); color: #1e3c72;
+            font-weight: 900; font-size: 15px; cursor: pointer; margin-top: 15px;
+            box-shadow: 0 4px 15px rgba(168, 237, 240, 0.4);
+        }
+
         /* SẢNH CHỜ (LOBBY) */
         .lobby-card {
             position: relative; z-index: 2; width: 90%; max-width: 400px;
@@ -131,13 +167,41 @@
 
     <canvas id="snowflakeCanvas"></canvas>
 
+    <!-- 1. MODAL THÔNG BÁO NỔI KHI VÀO TRANG WEB -->
+    <div class="notice-modal" id="welcomeNotice">
+        <div class="notice-card">
+            <h2>📢 THÔNG BÁO / ANNOUNCEMENT</h2>
+            
+            <div class="notice-sub">
+                <p><b>🎮 Web UNO Online cùng bạn bè 2 người</b></p>
+                <p><i>(Online 2-player UNO web game with friends)</i></p>
+                <br>
+                <p>⚠️ Web mới tạo có thể sẽ xuất hiện lỗi, vui lòng dms qua gmail:</p>
+                <p><i>(Newly created site, there might be bugs. Please contact via Gmail:)</i></p>
+                <p><a href="mailto:maitanphat632@gmail.com"><b>maitanphat632@gmail.com</b></a></p>
+                <br>
+                <p style="color: #ffeaa7; font-weight: 800;">Donate me for crazy updates 🤓</p>
+            </div>
+
+            <!-- ẢNH QR CHUYỂN KHOẢN KÈM NÚT TẢI VỀ -->
+            <div class="qr-container">
+                <img id="qrImage" class="qr-img" alt="Donate QR Code" src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFh8nGHaeJxdlWH50m36GoKeomKSoiaL5s7iutPV94I//2wBDAQcHBwoIChMKChMoGh4aKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAJTA1ADASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjNT2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnA0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oAD2D83431
+/9k=" />
+            </div>
+            <br>
+            <button class="btn-download-qr" onclick="downloadQR()"><i class="fa-solid fa-download"></i> Tải ảnh QR / Save QR Image</button>
+
+            <button class="btn-close-notice" onclick="closeNotice()">ĐÃ HIỂU & VÀO GAME / START</button>
+        </div>
+    </div>
+
     <!-- SẢNH KHỞI TẠO GAME -->
     <div class="lobby-card" id="lobby">
-        <h1><i class="fa-solid fa-snowflake"></i> UNO SNOW</h1>
-        <p style="font-size:14px; margin-bottom:12px; opacity:0.8;">Đánh Combo Same-Number & Bỏ Lượt</p>
+        <h1><i class="fa-solid fa-snowflake"></i> uno 2th gay</h1>
+        <p style="font-size:14px; margin-bottom:12px; opacity:0.8;">chơi với bạn bè là hết sẩy</p>
         
         <!-- NHẬP TÊN NGUỜI CHƠI -->
-        <input type="text" id="player-name" class="input-box" placeholder="Nhập tên của bạn (Ví dụ: Phát)" value="">
+        <input type="text" id="player-name" class="input-box" placeholder="Nhập tên của bạn (Ví dụ: tun lầm)" value="">
 
         <hr style="border: 0.5px solid rgba(255,255,255,0.2); margin: 12px 0;">
 
@@ -235,6 +299,22 @@
     </div>
 
     <script>
+        // HÀM TẢI ẢNH QR VỀ THIẾT BỊ
+        function downloadQR() {
+            const qrImg = document.getElementById('qrImage');
+            const link = document.createElement('a');
+            link.href = qrImg.src;
+            link.download = 'Donate_QR_MaiTanPhat.jpg';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // HÀM ĐÓNG THÔNG BÁO VÀO GAME
+        function closeNotice() {
+            document.getElementById('welcomeNotice').style.display = 'none';
+        }
+
         // --- 1. HIỆU ỨNG TUYẾT RƠI ---
         const canvas = document.getElementById('snowflakeCanvas');
         const ctx = canvas.getContext('2d');
@@ -264,15 +344,13 @@
             return input !== "" ? input : "Người chơi";
         }
 
-        // CHỦ PHÒNG (HOST) NHẬN KẾT NỐI
         peer.on('connection', c => {
             conn = c; isHost = true; myTurn = true;
             myName = getMyName();
-            start10SecLoading(); // Bắt đầu đếm ngược 10s
+            start10SecLoading();
             listenData();
         });
 
-        // NGƯỜI VÀO PHÒNG (CLIENT)
         function joinRoom() {
             const destId = document.getElementById('join-id').value.trim();
             if(!destId) return alert("Vui lòng nhập Mã phòng!");
@@ -282,14 +360,13 @@
             isHost = false; myTurn = false;
 
             conn.on('open', () => {
-                start10SecLoading(); // Bắt đầu đếm ngược 10s
+                start10SecLoading();
                 listenData();
                 conn.send({ type: 'SEND_NAME', name: myName });
                 conn.send({ type: 'READY_TO_START' });
             });
         }
 
-        // HÀM ĐẾM NGƯỢC LOADING 10 GIÂY
         function start10SecLoading() {
             document.getElementById('lobby').style.display = 'none';
             document.getElementById('loadingScreen').style.display = 'flex';
@@ -303,7 +380,6 @@
                 document.getElementById('countdownTimer').innerText = timeLeft;
                 document.getElementById('progressFill').style.width = (timeLeft * 10) + '%';
 
-                // Chuẩn bị bài sẵn từ Host
                 if(isHost && timeLeft === 8) {
                     setupGame();
                 }
@@ -333,11 +409,10 @@
             return d.sort(() => Math.random() - 0.5);
         }
 
-        // TẠO LẠI BÀI VÀ CHIA ĐỀU 5 LÁ NGẪU NHIÊN BẰNG NHAU
         function setupGame() {
             deck = createDeck();
-            myHand = deck.splice(0, 5);      // Host nhận 5 lá bài
-            let oppHand = deck.splice(0, 5);  // Client nhận 5 lá bài
+            myHand = deck.splice(0, 5);
+            let oppHand = deck.splice(0, 5);
             oppHandCount = 5;
 
             topCard = deck.pop();
@@ -346,7 +421,7 @@
             selectedCardIndices = [];
             hasDrawn = false;
 
-            sendGameState(oppHand); // Truyền dữ liệu 5 lá này sang đối thủ
+            sendGameState(oppHand);
         }
 
         function sendGameState(oppHandData = null) {
@@ -373,12 +448,28 @@
                     oppHandCount = data.oppCardCount;
                     myTurn = data.yourTurn;
                     if(data.hostName) oppName = data.hostName;
-                    if(data.yourHand) myHand = data.yourHand; // Client nhận 5 lá từ Host truyền qua
+                    if(data.yourHand) myHand = data.yourHand;
                     selectedCardIndices = [];
                     hasDrawn = false;
                     renderAll();
+                } else if(data.type === 'DRAW_CARDS') {
+                    if(isHost) {
+                        let drawnCards = [];
+                        for(let i = 0; i < data.count; i++) {
+                            if(deck.length === 0) deck = createDeck();
+                            drawnCards.push(deck.pop());
+                        }
+                        conn.send({ type: 'RECEIVE_DRAWN_CARDS', cards: drawnCards });
+                        oppHandCount += data.count;
+                        renderAll();
+                    }
+                } else if(data.type === 'RECEIVE_DRAWN_CARDS') {
+                    myHand.push(...data.cards);
+                    alert(`Bạn đã dính bẫy và phải rút ${data.cards.length} lá bài! Mất lượt!`);
+                    renderAll();
                 } else if(data.type === 'DRAW') {
                     if(isHost) {
+                        if(deck.length === 0) deck = createDeck();
                         let drawn = deck.pop();
                         conn.send({ type: 'GIVE_CARD', card: drawn });
                         oppHandCount++;
@@ -408,7 +499,6 @@
             });
         }
 
-        // CHỌN LÁ BÀI / COMBO CÙNG SỐ
         function selectCardToPlay(idx) {
             if(!myTurn) return alert("Chưa tới lượt của bạn!");
 
@@ -477,8 +567,26 @@
             selectedCardIndices = [];
             hasDrawn = false;
 
+            let draw2Count = playedCards.filter(c => c.val === '+2').length;
+            let draw4Count = playedCards.filter(c => c.val === '+4').length;
+            let totalCardsToDraw = (draw2Count * 2) + (draw4Count * 4);
+
             const hasSkip = playedCards.some(c => c.val === '🚫' || c.val === '🔄');
-            if (hasSkip) {
+
+            if (totalCardsToDraw > 0) {
+                if (isHost) {
+                    let drawnForOpp = [];
+                    for(let i = 0; i < totalCardsToDraw; i++) {
+                        if(deck.length === 0) deck = createDeck();
+                        drawnForOpp.push(deck.pop());
+                    }
+                    oppHandCount += totalCardsToDraw;
+                    conn.send({ type: 'RECEIVE_DRAWN_CARDS', cards: drawnForOpp });
+                } else {
+                    conn.send({ type: 'DRAW_CARDS', count: totalCardsToDraw });
+                }
+                myTurn = true;
+            } else if (hasSkip) {
                 myTurn = true;
             } else {
                 myTurn = false;
@@ -494,7 +602,7 @@
                 sendGameState();
                 renderAll();
             } else {
-                conn.send({ type: 'SYNC', topCard: topCard, oppCardCount: myHand.length, yourTurn: !hasSkip });
+                conn.send({ type: 'SYNC', topCard: topCard, oppCardCount: myHand.length, yourTurn: !myTurn });
                 renderAll();
             }
         }
@@ -505,6 +613,7 @@
 
             selectedCardIndices = [];
             if (isHost) {
+                if(deck.length === 0) deck = createDeck();
                 myHand.push(deck.pop());
                 hasDrawn = true;
                 sendGameState();
@@ -585,7 +694,6 @@
             document.getElementById('myNameDisplay').innerText = `${myName} (${myHand.length} lá)`;
             document.getElementById('oppNameDisplay').innerText = `${oppName} (${oppHandCount} lá)`;
 
-            // Render Bài của mình
             const myHandEl = document.getElementById('myHand');
             myHandEl.innerHTML = '';
             myHand.forEach((card, idx) => {
@@ -597,7 +705,6 @@
                 myHandEl.appendChild(el);
             });
 
-            // Nút ĐÁNH BÀI
             const btnPlay = document.getElementById('btnPlayCard');
             if (myTurn && isSelectedComboValid()) {
                 btnPlay.disabled = false;
@@ -605,7 +712,6 @@
                 btnPlay.disabled = true;
             }
 
-            // Nút BỎ LƯỢT
             const btnPass = document.getElementById('btnPassTurn');
             if (myTurn && hasDrawn) {
                 btnPass.disabled = false;
@@ -613,7 +719,6 @@
                 btnPass.disabled = true;
             }
 
-            // Render Bài đối thủ (Mặt sau)
             const oppHandEl = document.getElementById('oppHand');
             oppHandEl.innerHTML = '';
             for(let i=0; i<oppHandCount; i++) {
@@ -622,14 +727,12 @@
                 oppHandEl.appendChild(el);
             }
 
-            // Render Lá trên bàn
             const topEl = document.getElementById('topCard');
             if(topCard) {
                 topEl.className = `card-uno card-${topCard.color}`;
                 topEl.innerText = topCard.val;
             }
 
-            // Lượt chơi
             document.getElementById('turnStatus').innerText = myTurn 
                 ? (hasDrawn ? "🟢 BẠN VỪA RÚT BÀI! Đánh tiếp hoặc Bỏ lượt." : "🟢 ĐẾN LƯỢT BẠN!") 
                 : `⏳ Lượt của ${oppName}...`;

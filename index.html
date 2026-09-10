@@ -118,8 +118,8 @@
 
     <!-- SẢNH KHỞI TẠO GAME -->
     <div class="lobby-card" id="lobby">
-        <h1><i class="fa-solid fa-snowflake"></i> UNO SNOW</h1>
-        <p style="font-size:14px; margin-bottom:12px; opacity:0.8;">Đánh Combo Same-Number & Bỏ Lượt</p>
+        <h1><i class="fa-solid fa-snowflake"></i> UNO 2 PLAYER</h1>
+        <p style="font-size:14px; margin-bottom:12px; opacity:0.8;">phiên bản 1.0(alpha test)</p>
         
         <!-- NHẬP TÊN NGUỜI CHƠI -->
         <input type="text" id="player-name" class="input-box" placeholder="Nhập tên của bạn (Ví dụ: Phát)" value="">
@@ -226,8 +226,8 @@
         // --- 2. PEERJS KẾT NỐI ONLINE ---
         let peer = new Peer(), conn = null, isHost = false, myTurn = false;
         let deck = [], myHand = [], oppHandCount = 5, topCard = null;
-        let selectedCardIndices = []; // Lưu danh sách các lá bài đang chọn (để đánh combo)
-        let hasDrawn = false; // Đã rút bài trong lượt này chưa
+        let selectedCardIndices = [];
+        let hasDrawn = false;
         let myName = "Người chơi", oppName = "Đối thủ";
         let myScore = 0, oppScore = 0;
 
@@ -238,14 +238,15 @@
             return input !== "" ? input : "Người chơi";
         }
 
+        // CHỦ PHÒNG (HOST) LẮNG NGHE KẾT NỐI
         peer.on('connection', c => {
             conn = c; isHost = true; myTurn = true;
             myName = getMyName();
             initLobbyToGame();
-            setupGame();
             listenData();
         });
 
+        // NGƯỜI VÀO PHÒNG (CLIENT)
         function joinRoom() {
             const destId = document.getElementById('join-id').value.trim();
             if(!destId) return alert("Vui lòng nhập Mã phòng!");
@@ -256,14 +257,15 @@
             conn.on('open', () => {
                 initLobbyToGame();
                 listenData();
+                // Gửi tên và yêu cầu CHIA BÀI
                 conn.send({ type: 'SEND_NAME', name: myName });
+                conn.send({ type: 'READY_TO_START' });
             });
         }
 
         function initLobbyToGame() {
             document.getElementById('lobby').style.display = 'none';
             document.getElementById('gameBoard').style.display = 'flex';
-            document.getElementById('myNameDisplay').innerText = `${myName} (0 lá)`;
         }
 
         // --- 3. LOGIC UNO CỦA TRƯỜNG HỌC ---
@@ -282,19 +284,21 @@
             return d.sort(() => Math.random() - 0.5);
         }
 
-        // Khởi tạo ván chơi mới: CHIA ĐỀU 5 LÁ BÀI CHO CẢ 2 BÊN
+        // HÀM CHIA CHUẨN ĐỀU BÀI: CẢ 2 BÊN MỖI BÊN CÓ ĐÚNG 5 LÁ BÀI NGẪU NHIÊN
         function setupGame() {
             deck = createDeck();
-            myHand = deck.splice(0, 5); // Host nhận 5 lá
-            let oppHand = deck.splice(0, 5); // Client nhận 5 lá
+            myHand = deck.splice(0, 5);      // Host nhận 5 lá ngẫu nhiên
+            let oppHand = deck.splice(0, 5);  // Client nhận 5 lá ngẫu nhiên
             oppHandCount = 5;
+
             topCard = deck.pop();
             while(topCard.color === 'black') { deck.push(topCard); topCard = deck.pop(); }
 
             selectedCardIndices = [];
             hasDrawn = false;
+
             renderAll();
-            sendGameState(oppHand);
+            sendGameState(oppHand); // Truyền ngay 5 lá này sang máy bên kia
         }
 
         function sendGameState(oppHandData = null) {
@@ -317,12 +321,14 @@
                 if(data.type === 'SEND_NAME') {
                     oppName = data.name;
                     renderAll();
+                } else if(data.type === 'READY_TO_START') {
+                    if(isHost) setupGame(); // Đối thủ đã sẵn sàng -> Bắt đầu phát 5 lá bài
                 } else if(data.type === 'SYNC') {
                     topCard = data.topCard;
                     oppHandCount = data.oppCardCount;
                     myTurn = data.yourTurn;
                     if(data.hostName) oppName = data.hostName;
-                    if(data.yourHand) myHand = data.yourHand;
+                    if(data.yourHand) myHand = data.yourHand; // Nhận đủ 5 lá từ Host
                     selectedCardIndices = [];
                     hasDrawn = false;
                     renderAll();
@@ -357,7 +363,7 @@
             });
         }
 
-        // CHỌN LÁ BÀI / CHỌN COMBO BÀI CÙNG SỐ
+        // CHỌN LÁ BÀI / COMBO CÙNG SỐ
         function selectCardToPlay(idx) {
             if(!myTurn) return alert("Chưa tới lượt của bạn!");
 
@@ -365,16 +371,13 @@
             const alreadyIdx = selectedCardIndices.indexOf(idx);
 
             if (alreadyIdx !== -1) {
-                // Đã chọn -> Hủy chọn lá này
                 selectedCardIndices.splice(alreadyIdx, 1);
             } else {
-                // Nếu đã chọn bài trước đó -> Kiểm tra xem có CÙNG SỐ/CÙNG CHỨC NĂNG không
                 if (selectedCardIndices.length > 0) {
                     const firstSelectedVal = myHand[selectedCardIndices[0]].val;
                     if (card.val === firstSelectedVal) {
-                        selectedCardIndices.push(idx); // Cùng số -> Cho chọn thêm Combo!
+                        selectedCardIndices.push(idx);
                     } else {
-                        // Khác số -> Đổi sang chọn lá bài mới này
                         selectedCardIndices = [idx];
                     }
                 } else {
@@ -384,31 +387,24 @@
             renderAll();
         }
 
-        // Kiểm tra xem combo lá bài đang chọn có hợp lệ để đánh lên bàn không
         function isSelectedComboValid() {
             if (selectedCardIndices.length === 0) return false;
 
             const firstCard = myHand[selectedCardIndices[0]];
             const selectedVal = firstCard.val;
 
-            // 1. Cùng giá trị với lá trên bàn
             if (selectedVal === topCard.val) return true;
-
-            // 2. Lá bài đổi màu (Đen)
             if (firstCard.color === 'black') return true;
 
-            // 3. Có ít nhất 1 lá trong Combo cùng màu với lá trên bàn
             const hasSameColor = selectedCardIndices.some(i => myHand[i].color === topCard.color);
             if (hasSameColor) return true;
 
             return false;
         }
 
-        // NÚT "ĐÁNH BÀI"
         function confirmPlayCard() {
             if (!myTurn || !isSelectedComboValid()) return;
 
-            // Lấy danh sách các lá bài được chọn
             const playedCards = selectedCardIndices.map(i => myHand[i]);
 
             if (playedCards[0].color === 'black') {
@@ -426,11 +422,9 @@
         }
 
         function executePlayCombo(playedCards, chosenColor = null) {
-            // Xóa các lá bài đã đánh ra khỏi tay
             selectedCardIndices.sort((a, b) => b - a);
             selectedCardIndices.forEach(i => myHand.splice(i, 1));
 
-            // Lá bài cuối cùng trong Combo sẽ nằm trên cùng bàn
             let lastCard = playedCards[playedCards.length - 1];
             if (chosenColor) lastCard.color = chosenColor;
             topCard = lastCard;
@@ -438,15 +432,13 @@
             selectedCardIndices = [];
             hasDrawn = false;
 
-            // Mất lượt nếu lá cuối cùng là cấm 🚫 hoặc đổi chiều 🔄
             const hasSkip = playedCards.some(c => c.val === '🚫' || c.val === '🔄');
             if (hasSkip) {
-                myTurn = true; // Tiếp tục giữ lượt
+                myTurn = true;
             } else {
-                myTurn = false; // Chuyển lượt đối thủ
+                myTurn = false;
             }
 
-            // KIỂM TRA THẮNG VÁN
             if (myHand.length === 0) {
                 myScore++;
                 conn.send({ type: 'ROUND_WIN', winnerScore: myScore });
@@ -462,7 +454,6 @@
             }
         }
 
-        // RÚT BÀI
         function drawCardAction() {
             if (!myTurn) return alert("Chưa tới lượt bạn!");
             if (hasDrawn) return alert("Bạn đã rút bài rồi! Hãy chọn bài đánh hoặc bấm BỎ LƯỢT.");
@@ -478,7 +469,6 @@
             }
         }
 
-        // NÚT "BỎ LƯỢT" (Bấm nhường lượt sau khi rút bài)
         function confirmPassTurn() {
             if (!myTurn || !hasDrawn) return;
 
@@ -545,14 +535,12 @@
         }
 
         function renderAll() {
-            // Render Bảng Điểm
             document.getElementById('scoreBoard').innerText = `Tỉ số: ${myName} ${myScore} - ${oppScore} ${oppName}`;
 
-            // Tên hiển thị kèm số lá
             document.getElementById('myNameDisplay').innerText = `${myName} (${myHand.length} lá)`;
             document.getElementById('oppNameDisplay').innerText = `${oppName} (${oppHandCount} lá)`;
 
-            // Render Bài của mình (Cho phép chọn Combo)
+            // Render Bài của mình
             const myHandEl = document.getElementById('myHand');
             myHandEl.innerHTML = '';
             myHand.forEach((card, idx) => {
@@ -564,7 +552,7 @@
                 myHandEl.appendChild(el);
             });
 
-            // Điều khiển NÚT ĐÁNH BÀI
+            // Nút ĐÁNH BÀI
             const btnPlay = document.getElementById('btnPlayCard');
             if (myTurn && isSelectedComboValid()) {
                 btnPlay.disabled = false;
@@ -572,7 +560,7 @@
                 btnPlay.disabled = true;
             }
 
-            // Điều khiển NÚT BỎ LƯỢT (Bật khi đã rút bài mà không đánh)
+            // Nút BỎ LƯỢT
             const btnPass = document.getElementById('btnPassTurn');
             if (myTurn && hasDrawn) {
                 btnPass.disabled = false;
@@ -589,12 +577,12 @@
                 oppHandEl.appendChild(el);
             }
 
-            // Render Lá bài trên bàn
+            // Render Lá trên bàn
             const topEl = document.getElementById('topCard');
             topEl.className = `card-uno card-${topCard.color}`;
             topEl.innerText = topCard.val;
 
-            // Thông báo Lượt chơi
+            // Lượt chơi
             document.getElementById('turnStatus').innerText = myTurn 
                 ? (hasDrawn ? "🟢 BẠN VỪA RÚT BÀI! Đánh tiếp hoặc Bỏ lượt." : "🟢 ĐẾN LƯỢT BẠN!") 
                 : `⏳ Lượt của ${oppName}...`;
